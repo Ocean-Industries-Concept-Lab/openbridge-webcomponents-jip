@@ -3,13 +3,13 @@ import {ReactiveController, ReactiveControllerHost} from 'lit';
 
 export class RateOfTurnController implements ReactiveController {
   private host: ReactiveControllerHost;
-  private el: HTMLElement;
+  readonly el: Element;
   private animation?: Animation;
   private _rotationsPerMinute = 1;
 
   constructor(
     host: ReactiveControllerHost,
-    el: HTMLElement,
+    el: Element,
     initialRotationsPerMinute = 1
   ) {
     this.host = host;
@@ -83,5 +83,14 @@ export class RateOfTurnController implements ReactiveController {
     if (this._rotationsPerMinute === 0) {
       this.animation.pause();
     }
+  }
+
+  destroy() {
+    this.animation?.cancel();
+    this.animation = undefined;
+  }
+
+  hostDisconnected() {
+    this.destroy();
   }
 }
