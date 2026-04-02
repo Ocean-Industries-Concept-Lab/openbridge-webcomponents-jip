@@ -250,7 +250,10 @@ export class ObcRudder extends SetpointMixin(LitElement) {
       const frame = computeZoomToFitArcFrame({
         areas,
         outerRadius: OUTER_RING_RADIUS,
-        innerRadius: innerRingRadiusFor(WatchCircleType.double),
+        innerRadius:
+          this.variant === ObcRudderVariant.Needle
+            ? 0
+            : innerRingRadiusFor(WatchCircleType.double),
         extension: ext,
         targetSize,
       });

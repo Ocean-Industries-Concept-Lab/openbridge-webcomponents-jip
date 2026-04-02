@@ -51,6 +51,8 @@ export class ObcCompassFlat extends LitElement {
   ];
   @property({type: String}) rotType: RotType | undefined;
   @property({type: Number}) rotationsPerMinute: number = 1;
+  @property({type: Number}) rotMaxValue: number = 10;
+  @property({type: Number}) rotArcExtent: number = 60;
 
   @state() private containerWidth = 0;
   @state() private maxContainerWidth = 0;
@@ -268,7 +270,9 @@ export class ObcCompassFlat extends LitElement {
           .bottomBar=${!!this.rotType}
           .rotType=${this.rotType}
           .rotStartX=${0}
-          .rotEndX=${translation}
+          .rotEndX=${(this.rotationsPerMinute / (this.rotMaxValue || 1)) *
+          this.rotArcExtent *
+          translationScale}
           .rotDotSpacing=${72 * translationScale}
           .rotationsPerMinute=${this.rotationsPerMinute}
           .rotPriority=${this.priorityFor(CompassFlatPriorityElement.rot)}

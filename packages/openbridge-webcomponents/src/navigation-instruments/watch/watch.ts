@@ -176,6 +176,7 @@ export class ObcWatch extends LitElement {
   @property({type: String}) watchCircleType: WatchCircleType =
     WatchCircleType.single;
   @property({type: Boolean}) northArrow: boolean = false;
+  @property({type: Boolean}) northArrowInside: boolean | undefined;
   @property({type: Number}) angleSetpoint: number | undefined;
   @property({type: Number}) newAngleSetpoint: number | undefined;
   @property({type: Boolean}) atAngleSetpoint: boolean = false;
@@ -360,7 +361,19 @@ export class ObcWatch extends LitElement {
         <rect x="${-maskSize}" y="${-maskSize}" width="${maskSize * 2}" height="${maskSize * 2}" fill="black" />
         ${areas.map((area) => svg`<path d=${area} fill="white" vector-effect="non-scaling-stroke" stroke="white" stroke-width="1"/>`)}
       </mask>`;
-      result = [mask, svg`<g mask="url(#cutMask)">${rings}</g>`];
+      // clipPath for ROT uses r=0 so dots at any track radius stay visible
+      const rotClip = svg`<clipPath id="rot-arc-clip">${this.areas.map(
+        (area) =>
+          svg`<path d=${roundedArch({
+            startAngle: area.startAngle,
+            endAngle: area.endAngle,
+            R: OUTER_RING_RADIUS + this._rOff + 20,
+            r: 0,
+            roundOutsideCut: area.roundOutsideCut,
+            roundInsideCut: area.roundInsideCut,
+          })} />`
+      )}</clipPath>`;
+      result = [mask, rotClip, svg`<g mask="url(#cutMask)">${rings}</g>`];
       areas.forEach((area) => {
         result.push(
           svg`<path d=${area} fill="none" stroke="var(--instrument-frame-tertiary-color)" vector-effect="non-scaling-stroke"/>`
@@ -655,7 +668,7 @@ export class ObcWatch extends LitElement {
       ? renderNorthArrow({
           scale,
           rotation: this.rotation,
-          inside: this.tickmarksInside,
+          inside: this.northArrowInside ?? this.tickmarksInside,
         })
       : nothing;
     const wind =
@@ -699,8 +712,12 @@ export class ObcWatch extends LitElement {
             )
           : nothing}
         ${northArrowEl} ${this.renderStarboardPortIndicator()} ${current}
-        ${wind} ${tickmarks} ${this.renderRot()} ${advices} ${angleSetpoint}
-        ${labels} ${this.renderVesselImage()} ${this.renderNeedles()}
+        ${wind} ${tickmarks}
+        ${this.areas.length > 0
+          ? svg`<g clip-path="url(#rot-arc-clip)">${this.renderRot()}</g>`
+          : this.renderRot()}
+        ${advices} ${angleSetpoint} ${labels} ${this.renderVesselImage()}
+        ${this.renderNeedles()}
       </svg>
     `;
   }
@@ -746,15 +763,12 @@ export class ObcWatch extends LitElement {
     };
   }
 
-  // NOTE: ROT helpers do not account for this._rOff yet. When a future
-  // "Compass Sector" component combines rotType with zoomToFitArc, the ROT
-  // radii (renderRotBarStatic, renderRotBarDots, renderRotDots) must be
-  // offset by this._rOff to stay aligned with the enlarged watch rings.
   private renderRot(): SVGTemplateResult | typeof nothing {
     if (!this.rotType) return nothing;
 
     const {dotColor, barBgColor, endDotFill, endDotStroke} =
       this.getRotColors();
+    const rOff = this._rOff;
 
     if (this.rotType === RotType.bar) {
       const hasBar =
@@ -769,12 +783,13 @@ export class ObcWatch extends LitElement {
           endDotFill,
           endDotStroke,
           maskId: 'rot-bar-mask',
+          radiusOffset: rOff,
         })}
         ${
           hasBar
             ? svg`<g clip-path="url(#rot-bar-mask)">
               <g id="rot-spinner">
-                ${renderRotBarDots(dotColor, this.rotPosition)}
+                ${renderRotBarDots(dotColor, this.rotPosition, rOff)}
               </g>
             </g>`
             : nothing
@@ -789,7 +804,7 @@ export class ObcWatch extends LitElement {
         : 'var(--instrument-regular-secondary-color)';
     return svg`
       <g id="rot-spinner">
-        ${renderRotDots(dotsColor, this.rotPosition)}
+        ${renderRotDots(dotsColor, this.rotPosition, rOff)}
       </g>
     `;
   }
